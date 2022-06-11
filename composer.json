@@ -1,0 +1,15 @@
+{
+    "name": "sd/trade",
+    "authors": [
+        {
+            "name": "Vlad",
+            "email": "d_m_n04@mail.ru"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "classmap": [
+            "inc"
+        ]
+    }
+}
