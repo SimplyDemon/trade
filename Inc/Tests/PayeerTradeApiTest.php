@@ -1,9 +1,9 @@
 <?php
 
-namespace Inc\Tests;
+namespace sd\Inc\Tests;
 
 use Exception;
-use Inc\Classes\PayeerTradeApi;
+use sd\Inc\Classes\PayeerTradeApi;
 use PHPUnit\Framework\TestCase;
 
 class PayeerTradeApiTest extends TestCase

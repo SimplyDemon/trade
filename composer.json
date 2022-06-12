@@ -1,5 +1,6 @@
 {
-    "name": "sd/trade",
+    "name": "simplydemon/trade",
+    "description": "Work with Payeer Api",
     "authors": [
         {
             "name": "Vlad",
@@ -7,12 +8,13 @@
         }
     ],
     "require": {
+        "php": ">=8.1",
         "phpunit/phpunit": "^9.5",
         "vlucas/phpdotenv": "^5.4"
     },
     "autoload": {
-        "classmap": [
-            "inc"
-        ]
+        "psr-4": {
+            "sd\\": ""
+        }
     }
 }

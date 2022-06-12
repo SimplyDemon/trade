@@ -1,6 +1,6 @@
 <?php
 
-namespace Inc\Classes;
+namespace sd\Inc\Classes;
 
 use Exception;
 use JetBrains\PhpStorm\Pure;

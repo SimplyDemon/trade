@@ -7,7 +7,7 @@ $dotenv->load();
 $secret = $_ENV['PAYEER_API_SECRET'] ?? '';
 $id = $_ENV['PAYEER_API_ID'] ?? '';
 
-$payeerTradeApi = new Inc\Classes\PayeerTradeApi($secret, $id);
+$payeerTradeApi = new sd\Inc\Classes\PayeerTradeApi($secret, $id);
 $pairs = ['BTC_USDT', 'BTC_RUB'];
 echo '<pre>';
 try {
