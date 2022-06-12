@@ -6,12 +6,10 @@ use Exception;
 
 class PayeerTradeApi
 {
-    private array $arParams = [];
-    private array $arError = [];
-
-    public function __construct($params = [])
-    {
-        $this->arParams = $params;
+    public function __construct(
+        private string $secret = '',
+        private string $id = '',
+    ) {
     }
 
     /**
@@ -25,6 +23,14 @@ class PayeerTradeApi
         ];
 
         if (!$isMethodPublic) {
+            if (empty($this->secret) || empty($this->id)) {
+                throw new Exception('For use private methods secret and id must be filled.');
+            }
+
+            /*
+             * The request will be processed if it reaches api server within 60 seconds,
+             * 'ts' parameter is required for private api requests.
+             */
             $post['ts'] = round(microtime(true) * 1000);
             $postJson = json_encode($post);
             $sign = $this->generateSign($method, $postJson);
@@ -34,7 +40,7 @@ class PayeerTradeApi
             }
 
             $headers = array_merge($headers, [
-                "API-ID: {$this->arParams['id']}",
+                "API-ID: {$this->id}",
                 "API-SIGN: {$sign}",
             ]);
         }
@@ -55,9 +61,13 @@ class PayeerTradeApi
 
         $response = json_decode($response, true);
 
-        if ($response['success'] !== true) {
-            $this->arError = $response['error'];
-            throw new Exception($response['error']['code']);
+        if ($response['success'] !== true && !empty($response['error'])) {
+            $error = $response['error'];
+            if (!empty($response['parameter'])) {
+                $error .= " {$response['parameter']}";
+            }
+
+            throw new Exception($error);
         }
 
         return $response;
@@ -65,12 +75,7 @@ class PayeerTradeApi
 
     private function generateSign(string $method, string $postJson): bool|string
     {
-        return hash_hmac('sha256', $method . $postJson, $this->arParams['secret']);
-    }
-
-    public function getError(): array
-    {
-        return $this->arError;
+        return hash_hmac('sha256', $method . $postJson, $this->secret);
     }
 
     /**
@@ -144,7 +149,7 @@ class PayeerTradeApi
         int|float $amount = 0,
         int|float $price = 0,
         int|float $value = 0,
-        int|float $stopPrice = 0
+        int|float $stopPrice = 0,
     ) {
         if (!empty($amount) && !empty($value)) {
             throw new Exception('Must be selected only one option: amount or value.');
@@ -258,7 +263,7 @@ class PayeerTradeApi
             $post['action'] = $action;
         }
 
-        return $this->request('order_cancel', post: $post);
+        return $this->request('orders_cancel', post: $post);
     }
 
 
@@ -289,7 +294,7 @@ class PayeerTradeApi
         int $dateFrom = 0,
         int $dateTo = 0,
         int $append = 0,
-        int $limit = 0
+        int $limit = 0,
     ) {
         $post = $this->generateFilterArgs(
             $pairs,
@@ -313,7 +318,7 @@ class PayeerTradeApi
         int $dateFrom = 0,
         int $dateTo = 0,
         int $append = 0,
-        int $limit = 0
+        int $limit = 0,
     ) {
         $post = $this->generateFilterArgs(
             $pairs,
@@ -335,7 +340,7 @@ class PayeerTradeApi
         int $dateFrom = 0,
         int $dateTo = 0,
         int $append = 0,
-        int $limit = 0
+        int $limit = 0,
     ): array {
         $post = [];
         if (!empty($pairs)) {
