@@ -6,7 +6,9 @@
             "email": "d_m_n04@mail.ru"
         }
     ],
-    "require": {},
+    "require": {
+        "phpunit/phpunit": "^9.5"
+    },
     "autoload": {
         "classmap": [
             "inc"
