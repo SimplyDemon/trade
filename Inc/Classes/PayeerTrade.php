@@ -3,9 +3,16 @@
 namespace Inc\Classes;
 
 use Exception;
+use JetBrains\PhpStorm\Pure;
 
 class PayeerTradeApi
 {
+    /**
+     * Parameters are required for private api.
+     *
+     * @param string $secret
+     * @param string $id
+     */
     public function __construct(
         private string $secret = '',
         private string $id = '',
@@ -13,9 +20,15 @@ class PayeerTradeApi
     }
 
     /**
+     * Main method for requests to api.
+     *
+     * @param string $method // Method name
+     * @param bool $isMethodPublic // Public methods not require secret and key
+     * @param array $post // Method parameters
+     * @return mixed
      * @throws Exception
      */
-    private function request(string $method, bool $isMethodPublic = false, array $post = [])
+    private function request(string $method, bool $isMethodPublic = false, array $post = []): mixed
     {
         $url = 'https://payeer.com/api/trade/';
         $headers = [
@@ -73,58 +86,82 @@ class PayeerTradeApi
         return $response;
     }
 
+    /**
+     * Sign is required for every private api request
+     *
+     * @param string $method // Method name
+     * @param string $postJson // Method parameters as json string
+     * @return bool|string
+     */
     private function generateSign(string $method, string $postJson): bool|string
     {
         return hash_hmac('sha256', $method . $postJson, $this->secret);
     }
 
     /**
+     * Test connection
+     *
+     * @return array
      * @throws Exception
      */
-    public function checkConnection()
+    public function checkConnection(): array
     {
         return $this->request('time', true);
     }
 
     /**
+     * Getting limits, available pairs and their parameters.
+     *
+     * @param array $pairs // If empty, return info about all pairs
+     * @return array
      * @throws Exception
      */
-    public function info()
+    public function info(array $pairs = []): array
     {
-        return $this->request('info', true);
+        $post = $this->generatePostFromPairsArray($pairs);
+
+        return $this->request('info', true, $post);
     }
 
     /**
+     * Getting price statistics and their changes over the last 24 hours.
+     *
+     * @param array $pairs // If empty, return info about all pairs
+     * @return array
      * @throws Exception
      */
-    public function ticker()
+    public function ticker(array $pairs = []): array
     {
-        return $this->request('ticker', true);
+        $post = $this->generatePostFromPairsArray($pairs);
+
+        return $this->request('ticker', true, $post);
     }
 
     /**
+     * Getting available orders for the specified pairs.
+     *
+     * @param array $pairs
+     * @return array
      * @throws Exception
      */
-    public function orders(array $pairs)
+    public function orders(array $pairs): array
     {
-        $pairsString = $this->convertPairsArrayToString($pairs);
-        $post = [
-            'pair' => $pairsString,
-        ];
+        $post = $this->generatePostFromPairsArray($pairs);
         $response = $this->request('orders', true, $post);
 
         return $response['pairs'];
     }
 
     /**
+     * Getting the history of transactions for the specified pairs.
+     *
+     * @param array $pairs
+     * @return array
      * @throws Exception
      */
-    public function trades(array $pairs)
+    public function trades(array $pairs): array
     {
-        $pairsString = $this->convertPairsArrayToString($pairs);
-        $post = [
-            'pair' => $pairsString,
-        ];
+        $post = $this->generatePostFromPairsArray($pairs);
         $response = $this->request('trades', true, $post);
 
         return $response['pairs'];
@@ -132,14 +169,27 @@ class PayeerTradeApi
 
 
     /**
+     * Getting the user's balance.
+     *
+     * @return array
      * @throws Exception
      */
-    public function account()
+    public function account(): array
     {
         return $this->request('account');
     }
 
     /**
+     * Creating an order.
+     *
+     * @param array $pairs
+     * @param string $type // Available types is 'limit', 'market', 'stop_limit'
+     * @param string $action // Available types is 'buy', 'sell'
+     * @param int|float $amount
+     * @param int|float $price
+     * @param int|float $value
+     * @param int|float $stopPrice
+     * @return array
      * @throws Exception
      */
     public function orderCreate(
@@ -150,12 +200,14 @@ class PayeerTradeApi
         int|float $price = 0,
         int|float $value = 0,
         int|float $stopPrice = 0,
-    ) {
+    ): array {
         if (!empty($amount) && !empty($value)) {
             throw new Exception('Must be selected only one option: amount or value.');
         }
 
         $pairsString = $this->convertPairsArrayToString($pairs);
+
+        /* Create post with parameters required for all types */
         $post = [
             'pair' => $pairsString,
             'type' => $type,
@@ -176,9 +228,15 @@ class PayeerTradeApi
     }
 
     /**
+     * Limit type.
+     *
+     * @param array $post
+     * @param int|float $amount
+     * @param int|float $price
+     * @return array
      * @throws Exception
      */
-    private function orderCreateLimit(array $post, int|float $amount, int|float $price)
+    private function orderCreateLimit(array $post, int|float $amount, int|float $price): array
     {
         $post = array_merge($post, [
             'amount' => $amount,
@@ -189,9 +247,16 @@ class PayeerTradeApi
     }
 
     /**
+     * Market type.
+     * It is possible to specify one of two parameters for creating a market order (amount or value).
+     *
+     * @param array $post
+     * @param int|float $amount
+     * @param int|float $value
+     * @return array
      * @throws Exception
      */
-    private function orderCreateMarket(array $post, int|float $amount = 0, int|float $value = 0)
+    private function orderCreateMarket(array $post, int|float $amount = 0, int|float $value = 0): array
     {
         if (!empty($amount) && !empty($value)) {
             throw new Exception('Must be selected only one option: amount or value.');
@@ -212,9 +277,16 @@ class PayeerTradeApi
 
 
     /**
+     * Stop limit type.
+     *
+     * @param array $post
+     * @param int|float $amount
+     * @param int|float $price
+     * @param int|float $stopPrice
+     * @return array
      * @throws Exception
      */
-    private function orderCreateStopLimit(array $post, int|float $amount, int|float $price, int|float $stopPrice)
+    private function orderCreateStopLimit(array $post, int|float $amount, int|float $price, int|float $stopPrice): array
     {
         $post = array_merge($post, [
             'amount' => $amount,
@@ -226,9 +298,13 @@ class PayeerTradeApi
     }
 
     /**
+     * Getting detailed information about your order by id.
+     *
+     * @param int $orderId
+     * @return array
      * @throws Exception
      */
-    public function orderStatus(int $orderId)
+    public function orderStatus(int $orderId): array
     {
         $post = [
             'order_id' => $orderId
@@ -238,9 +314,13 @@ class PayeerTradeApi
     }
 
     /**
+     * Cancellation of your order by id.
+     *
+     * @param int $orderId
+     * @return array
      * @throws Exception
      */
-    public function orderCancel(int $orderId)
+    public function orderCancel(int $orderId): array
     {
         $post = [
             'order_id' => $orderId
@@ -250,9 +330,15 @@ class PayeerTradeApi
     }
 
     /**
+     * Cancellation all/partially of orders.
+     * If not parameters is given - cancel all orders.
+     *
+     * @param array $pairs // Cancel all orders with pairs.
+     * @param string $action // Cancel all orders with action ('buy' or 'sell').
+     * @return array
      * @throws Exception
      */
-    public function ordersCancel(array $pairs = [], string $action = '')
+    public function ordersCancel(array $pairs = [], string $action = ''): array
     {
         $post = [];
         if (!empty($pairs)) {
@@ -268,9 +354,14 @@ class PayeerTradeApi
 
 
     /**
+     * Getting your open orders with the ability to filtering.
+     *
+     * @param array $pairs
+     * @param string $action // Available types is 'buy', 'sell'
+     * @return array
      * @throws Exception
      */
-    public function myOrders(array $pairs = [], string $action = '')
+    public function myOrders(array $pairs = [], string $action = ''): array
     {
         $post = [];
         if (!empty($pairs)) {
@@ -285,6 +376,16 @@ class PayeerTradeApi
     }
 
     /**
+     * Getting the history of your orders with the possibility of filtering and page-by-page loading.
+     *
+     * @param array $pairs
+     * @param string $action // Available types is 'buy', 'sell'
+     * @param string $status // Available types is 'success', 'processing', 'waiting', 'canceled'
+     * @param int $dateFrom // Timestamp of the beginning of the filtering period
+     * @param int $dateTo // Timestamp of the end of the filtering period, the filtering period should not exceed 32 days
+     * @param int $append // Last order id for page navigation
+     * @param int $limit // The count of returned items
+     * @return array
      * @throws Exception
      */
     public function myHistory(
@@ -295,7 +396,7 @@ class PayeerTradeApi
         int $dateTo = 0,
         int $append = 0,
         int $limit = 0,
-    ) {
+    ): array {
         $post = $this->generateFilterArgs(
             $pairs,
             $action,
@@ -310,6 +411,15 @@ class PayeerTradeApi
     }
 
     /**
+     * Getting your trades with the possibility of filtering and page-by-page loading.
+     *
+     * @param array $pairs
+     * @param string $action // Available types is 'buy', 'sell'
+     * @param int $dateFrom // Timestamp of the beginning of the filtering period
+     * @param int $dateTo // Timestamp of the end of the filtering period, the filtering period should not exceed 32 days
+     * @param int $append // Last order id for page navigation
+     * @param int $limit // The count of returned items
+     * @return array
      * @throws Exception
      */
     public function myTrades(
@@ -319,7 +429,7 @@ class PayeerTradeApi
         int $dateTo = 0,
         int $append = 0,
         int $limit = 0,
-    ) {
+    ): array {
         $post = $this->generateFilterArgs(
             $pairs,
             $action,
@@ -333,7 +443,10 @@ class PayeerTradeApi
         return $this->request('my_trades', post: $post);
     }
 
-    private function generateFilterArgs(
+    /**
+     * Trades and history has almost same filter args, use that method for avoid code duplication
+     */
+    #[Pure] private function generateFilterArgs(
         array $pairs = [],
         string $action = '',
         string $status = '',
@@ -369,9 +482,31 @@ class PayeerTradeApi
         return $post;
     }
 
+    /**
+     * Convert pairs to string.
+     *
+     * @param array $pairs
+     * @return string
+     */
     private function convertPairsArrayToString(array $pairs): string
     {
         return implode(',', $pairs);
     }
 
+    /**
+     * Few of request has only one parameter for api, that method generate post from pairs.
+     *
+     * @param array $pairs
+     * @return array
+     */
+    #[Pure] private function generatePostFromPairsArray(array $pairs): array
+    {
+        if (empty($pairs)) {
+            return [];
+        }
+
+        return [
+            'pair' => $this->convertPairsArrayToString($pairs),
+        ];
+    }
 }
